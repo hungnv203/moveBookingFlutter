@@ -12,7 +12,7 @@ class _PaymentPage extends State<PaymentPage>{
 
   @override
   Widget build(BuildContext context) {
-    String qrData = "https://img.vietqr.io/image/MB-0334035492-compact.png?amount=${widget.amount}&addInfo=${widget.bookingId}";
+    String qrData = "https://img.vietqr.io/image/MB-0334035492-compact.png?amount=${widget.amount}";
     // TODO: implement build
     return Scaffold(
       appBar: AppBar(title: Text("Thanh toán qua VietQR")),
@@ -25,7 +25,6 @@ class _PaymentPage extends State<PaymentPage>{
             Image.network(qrData),
             SizedBox(height: 20),
             Text("Số tiền: ${widget.amount} VNĐ"),
-            Text("Nội dung: ${widget.bookingId}"),
           ],
         ),
       ),

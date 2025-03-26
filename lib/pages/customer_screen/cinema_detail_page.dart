@@ -5,7 +5,10 @@ import 'package:my_app/pages/customer_screen/detail_page_film.dart';
 class CinemaDetailPage extends StatefulWidget {
   final String cinemaId;
 
-  const CinemaDetailPage({Key? key, required this.cinemaId,}) : super(key: key);
+  const CinemaDetailPage({
+    Key? key,
+    required this.cinemaId,
+  }) : super(key: key);
 
   @override
   State<CinemaDetailPage> createState() => _CinemaDetailPageState();
@@ -14,61 +17,91 @@ class CinemaDetailPage extends StatefulWidget {
 class _CinemaDetailPageState extends State<CinemaDetailPage> {
   bool isLoading = true;
   List<String> availableDates = [];
-  String selectedDate = ""; // Ngày được chọn
+  String selectedDate = "";
   List<String> showtimeHours = [];
-  String selectedHour = ""; // Giờ chiếu được chọn
+  String selectedHour = "";
   List<Map<String, dynamic>> moviesList = [];
+  String cinemaName = "đang tải...";
 
   @override
   void initState() {
     super.initState();
-    fetchShowtimes();
+    fetchData(); // 🔹 Gọi hàm tải dữ liệu song song
   }
 
-  Future<void> fetchShowtimes() async {
+  Future<void> fetchData() async {
     try {
-      var screensSnapshot = await FirebaseFirestore.instance
+      setState(() {
+        isLoading = true;
+      });
+
+      // 🔹 Tải dữ liệu song song
+      final cinemaFuture = FirebaseFirestore.instance
           .collection('cinemas')
           .doc(widget.cinemaId)
-          .collection('screens')
+          .get();
+      final showtimesFuture = FirebaseFirestore.instance
+          .collection('showtimes')
+          .where('cinemaId', isEqualTo: widget.cinemaId)
           .get();
 
-      Set<String> dates = {}; // Lưu danh sách ngày
+      final results = await Future.wait([cinemaFuture, showtimesFuture]);
+
+      // 🔹 Xử lý dữ liệu cinema
+      final cinemaDoc = results[0] as DocumentSnapshot;
+      if (cinemaDoc.exists) {
+        cinemaName = cinemaDoc["name"];
+      }
+
+      // 🔹 Xử lý dữ liệu showtimes
+      final showtimesSnapshot = results[1] as QuerySnapshot;
+      Set<String> dates = {};
       List<Map<String, dynamic>> tempMovies = [];
 
-      for (var screen in screensSnapshot.docs) {
-        var showtimesSnapshot = await screen.reference.collection('showtimes').get();
+      for (var showtime in showtimesSnapshot.docs) {
+        var data = showtime.data();
+        var date = (data as Map<String, dynamic>)['date'] ?? '';
+        var hour = (data as Map<String, dynamic>)['time'] ?? '';
+        var movieId = (data as Map<String, dynamic>)['movieId'] ?? '';
 
-        for (var showtime in showtimesSnapshot.docs) {
-          var date = showtime['date']; // Lấy ngày chiếu (vd: "2025-02-12")
-          var hour = showtime['time']; // Lấy giờ chiếu (vd: "18:00")
-          dates.add(date);
+        if (date.isEmpty || hour.isEmpty || movieId.isEmpty) {
+          print("❌ Dữ liệu thiếu: ${showtime.id}");
+          continue;
+        }
 
-          var movieId = showtime['movieId'];
-          var movieDoc = await FirebaseFirestore.instance.collection('movies').doc(movieId).get();
+        dates.add(date);
 
-          if (movieDoc.exists) {
-            tempMovies.add({
-              'showtimeId': showtime.id,
-              'time': hour,
-              'date': date,
-              'movieId': movieId,
-              'movieName': movieDoc['name'],
-              'posterUrl': movieDoc['imageUrl'],
-            });
-          }
+        // 🔹 Chỉ lấy các trường cần thiết từ Firestore
+        var movieDoc = await FirebaseFirestore.instance
+            .collection('movies')
+            .doc(movieId)
+            .get();
+
+        if (movieDoc.exists) {
+          var movieData = movieDoc.data() ?? {};
+          tempMovies.add({
+            'showtimeId': showtime.id,
+            'time': hour,
+            'date': date,
+            'movieId': movieId,
+            'movieName': movieData['name'] ?? 'Không rõ',
+            'posterUrl': movieData['imageUrl'] ?? '',
+          });
         }
       }
 
       setState(() {
-        availableDates = dates.toList()..sort(); // Sắp xếp ngày theo thứ tự
-        selectedDate = availableDates.isNotEmpty ? availableDates.first : ""; // Mặc định chọn ngày đầu tiên
+        availableDates = dates.toList()..sort();
+        selectedDate = availableDates.isNotEmpty ? availableDates.first : "";
         moviesList = tempMovies;
-        updateShowtimes(); // Cập nhật danh sách giờ chiếu
+        updateShowtimes();
         isLoading = false;
       });
     } catch (e) {
-      print("Lỗi khi tải suất chiếu: $e");
+      print("❌ Lỗi khi tải dữ liệu: $e");
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -87,13 +120,19 @@ class _CinemaDetailPageState extends State<CinemaDetailPage> {
   @override
   Widget build(BuildContext context) {
     List<Map<String, dynamic>> filteredMovies = moviesList
-        .where((movie) => movie['date'] == selectedDate && movie['time'] == selectedHour)
-        .toList(); // Lọc phim theo ngày & giờ
+        .where((movie) =>
+            movie['date'] == selectedDate && movie['time'] == selectedHour)
+        .toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text("Chi tiết Rạp Phim")),
+      backgroundColor: Colors.black, // 🌙 Màu nền đen toàn bộ trang
+      appBar: AppBar(
+        title: Text(cinemaName, style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Colors.white))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -109,14 +148,18 @@ class _CinemaDetailPageState extends State<CinemaDetailPage> {
                         onTap: () {
                           setState(() {
                             selectedDate = date;
-                            updateShowtimes(); // Cập nhật giờ chiếu khi đổi ngày
+                            updateShowtimes();
                           });
                         },
                         child: Container(
-                          margin: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 10),
                           decoration: BoxDecoration(
-                            color: selectedDate == date ? Colors.blueAccent : Colors.grey[800],
+                            color: selectedDate == date
+                                ? Colors.blueAccent
+                                : Colors.grey[850], // 🌙 Giữ màu tối
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Center(
@@ -152,10 +195,14 @@ class _CinemaDetailPageState extends State<CinemaDetailPage> {
                           });
                         },
                         child: Container(
-                          margin: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 10),
                           decoration: BoxDecoration(
-                            color: selectedHour == hour ? Colors.redAccent : Colors.grey[800],
+                            color: selectedHour == hour
+                                ? Colors.redAccent
+                                : Colors.grey[850], // 🌙 Màu tối cho nút không chọn
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Center(
@@ -179,12 +226,18 @@ class _CinemaDetailPageState extends State<CinemaDetailPage> {
                 // 🔹 Danh sách phim theo ngày & giờ
                 Expanded(
                   child: filteredMovies.isEmpty
-                      ? Center(child: Text("Không có phim nào cho thời gian này!", style: TextStyle(color: Colors.white)))
+                      ? Center(
+                          child: Text(
+                            "Không có phim nào cho thời gian này!",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        )
                       : ListView.builder(
                           itemCount: filteredMovies.length,
                           itemBuilder: (context, index) {
                             var movie = filteredMovies[index];
                             return Card(
+                              color: Colors.grey[900], // 🌙 Màu nền tối cho card
                               margin: EdgeInsets.all(10),
                               child: ListTile(
                                 leading: Image.network(
@@ -192,22 +245,34 @@ class _CinemaDetailPageState extends State<CinemaDetailPage> {
                                   width: 50,
                                   height: 75,
                                   fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
                                     if (loadingProgress == null) return child;
-                                    return Center(child: CircularProgressIndicator());
+                                    return Center(
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white));
                                   },
                                   errorBuilder: (context, error, stackTrace) {
-                                    return Icon(Icons.broken_image, size: 50, color: Colors.grey);
+                                    return Icon(Icons.broken_image,
+                                        size: 50, color: Colors.grey);
                                   },
                                 ),
-                                title: Text(movie['movieName']),
-                                subtitle: Text("Giờ: ${movie['time']} - Ngày: ${movie['date']}"),
-                                trailing: Icon(Icons.arrow_forward),
+                                title: Text(
+                                  movie['movieName'],
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Text(
+                                  "Giờ: ${movie['time']} - Ngày: ${movie['date']}",
+                                  style: TextStyle(color: Colors.grey[400]),
+                                ),
+                                trailing: Icon(Icons.arrow_forward,
+                                    color: Colors.white),
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => DetailFilmPage(movieId: movie['movieId']),
+                                      builder: (context) => DetailFilmPage(
+                                          movieId: movie['movieId']),
                                     ),
                                   );
                                 },

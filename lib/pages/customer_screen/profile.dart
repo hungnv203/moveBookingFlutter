@@ -1,60 +1,106 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app/pages/sign_in_screen.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+  @override
+  State<ProfilePage> createState() => _ProfilePage();
+}
+
+class _ProfilePage extends State<ProfilePage> {
+  Future<void> _logout(BuildContext context) async {
+    bool confirmLogout = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Đăng xuất"),
+          content: Text("Bạn có chắc chắn muốn đăng xuất không?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false); // Đóng popup, không đăng xuất
+              },
+              child: Text("Hủy"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true); // Xác nhận đăng xuất
+              },
+              child: Text("Đăng xuất", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmLogout == true) {
+      // 🟢 Nếu dùng Firebase Authentication
+      await FirebaseAuth.instance.signOut();
+      // Chuyển về màn hình đăng nhập
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SignInScreen(),
+        ),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile Page'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Center(
-              child: CircleAvatar(
-                radius: 50,
-                backgroundImage: AssetImage('assets/profile_picture.png'),
+        backgroundColor: Colors.black,
+        body: Container(
+          padding: EdgeInsets.only(top: 50),
+          child: Column(
+            children: [
+              Container(
+                child: Text("Thông tin của bạn",style: TextStyle(color: Colors.white,fontSize: 23),),
               ),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Name:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Hưng',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Email:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'hưng.12@example.com',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Phone:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              '+1234567890',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Add your onPressed code here!
-              },
-              child: Text('Edit Profile'),
-            ),
-          ],
-        ),
-      ),
-    );
+              // Danh sách tùy chọn
+              Expanded(
+                child: ListView(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.list_outlined,color: Colors.white54,),
+                      title: Text("Chi tiết",style: TextStyle(color: Colors.white54),),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                      onTap: (){},
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.person_outlined,color: Colors.white54,),
+                      title: Text("Cập nhật thông tin",style: TextStyle(color: Colors.white54),),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                      onTap: (){},
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.lock_outline,color: Colors.white54,),
+                      title: Text("Thay đổi mật khẩu",style: TextStyle(color: Colors.white54),),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                      onTap: () {
+                        
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.history_outlined,color: Colors.white54,),
+                      title: Text("Lịch sử thanh toán",style: TextStyle(color: Colors.white54),),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                      onTap: () {
+                        
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.logout_outlined,color: Colors.white54,),
+                      title: Text("Đăng xuất",style: TextStyle(color: Colors.white54),),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                      onTap: () => _logout(context),
+                    ),
+                   
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ));
   }
 }

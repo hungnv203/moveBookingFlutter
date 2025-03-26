@@ -32,6 +32,10 @@ class _BottomnavState extends State<Bottomnav> {
     return Scaffold(
       body: _pages[currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color.fromARGB(255, 36, 36, 36),
+        selectedItemColor: Colors.orangeAccent,
+        unselectedItemColor: Colors.white,
+        
         currentIndex: currentIndex,
         onTap: (index) {
           setState(() {
@@ -41,15 +45,15 @@ class _BottomnavState extends State<Bottomnav> {
         items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: 'Home',
+            label: 'Trang chủ',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.movie),
-            label: 'Ticket',
+            label: 'Vé của bạn',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'Tài khoản',
           ),
         ],
       ),

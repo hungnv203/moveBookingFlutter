@@ -116,24 +116,29 @@ class _DetailFilmPage extends State<DetailFilmPage> {
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold),
                             ),
-                            Text(
-                              movieData?['genre'] ?? 'No Genre',
-                              style: TextStyle(
+                            Row(
+                              children: [
+                                Text(
+                                  movieData?['genre'] ?? 'No Genre',
+                                  style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.normal),
+                                ),
+                                Spacer(),
+                                Icon(
+                                  Icons.timer_sharp,
                                   color: Colors.grey,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.normal),
-                            ),
-                            SizedBox(height: 10),
-                            Text("Duration",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold)),
-                            SizedBox(height: 5),
-                            Text(
-                              movieData?['duration'] ?? 'No duration available',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14),
+                                ),
+                                
+                                Text(
+                                  movieData?['duration'] ?? "",
+                                  style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.normal),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 10),
                             Text("Description",
@@ -147,8 +152,12 @@ class _DetailFilmPage extends State<DetailFilmPage> {
                               style:
                                   TextStyle(color: Colors.grey, fontSize: 14),
                             ),
-                            SizedBox(height: 20,),
-                            MaterialButton(
+                            SizedBox(
+                              height: 20,
+                            ),
+                            Container(
+                              alignment: Alignment.center,
+                              child: MaterialButton(
                                 color: Colors.green,
                                 child: Text('Đặt vé',
                                     style: TextStyle(
@@ -162,6 +171,7 @@ class _DetailFilmPage extends State<DetailFilmPage> {
                                           builder: (context) => BookingScreen(
                                               movieId: widget.movieId)));
                                 }),
+                            )
                           ],
                         ),
                       ),

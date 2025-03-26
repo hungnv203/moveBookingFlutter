@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:my_app/pages/admin_screen/AdminSeatPage.dart';
 
 class AdminShowtimePage extends StatefulWidget {
@@ -23,48 +24,53 @@ class _AdminShowtimePageState extends State<AdminShowtimePage> {
     super.initState();
     fetchMovies();
   }
+
   Future<void> fetchMovies() async {
-    var moviesSnapshot = await FirebaseFirestore.instance.collection('movies').get();
+    DateTime now = DateTime.now();
+    var moviesSnapshot =
+        await FirebaseFirestore.instance.collection('movies').get();
     for (var movie in moviesSnapshot.docs) {
-      movies.add({
-        'id': movie.id,
-        'name': movie['name'],
-      });
+      String releaseDateString = movie['releaseDate'].trim();
+      DateTime releaseDate = DateFormat("dd/MM/yyyy").parse(releaseDateString);
+      if(releaseDate.isBefore(now)){
+        movies.add({
+          'id': movie.id,
+          'name': movie['name'],
+        });
+      }
     }
-    setState(() {
-    });
+    setState(() {});
   }
-
-
 
   // Thêm suất chiếu mới
   Future<void> addShowtime() async {
-  
     if (selectedMovieId == null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Vui lòng chọn phim"),
       ));
       return;
     }
-    var showtimeRef = FirebaseFirestore.instance
-        .collection('cinemas')
-        .doc(widget.cinemaId)
-        .collection('screens')
-        .doc(widget.screenId)
-        .collection('showtimes')
-        .doc();
+    var showtimeRef = FirebaseFirestore.instance.collection('showtimes').doc();
 
     await showtimeRef.set({
+      'cinemaId': widget.cinemaId,
+      'screenId': widget.screenId,
       'time': timeController.text,
       'date': dateController.text,
       'movieId': selectedMovieId,
     });
-    var numSeatsSnapshot = await FirebaseFirestore.instance.collection('cinemas').doc(widget.cinemaId).collection('screens').doc(widget.screenId).get();
-    var numSeats = numSeatsSnapshot.data()?['seats'] ?? 0;
+    var screenDoc = await FirebaseFirestore.instance
+        .collection('screens')
+        .doc(widget.screenId)
+        .get();
+    var numSeats = screenDoc.data()?['seats'] ?? 0;
     // Tạo ghế ngồi cho suất chiếu
     for (var row in ['A', 'B', 'C', 'D']) {
-      for (int num = 1; num <= numSeats/5; num++) {
-        await showtimeRef.collection('seats').add({
+      for (int num = 1; num <= numSeats / 5; num++) {
+        await FirebaseFirestore.instance.collection('seats').add({
+          'cinemaId': widget.cinemaId,
+          'screenId': widget.screenId,
+          'showtimeId': showtimeRef.id,
           'seatNumber': "$row$num",
           'isBooked': false,
           'price': 50000.0,
@@ -81,25 +87,21 @@ class _AdminShowtimePageState extends State<AdminShowtimePage> {
 
   // Xóa suất chiếu
   Future<void> deleteShowtime(String showtimeId) async {
-    var showtimeRef = FirebaseFirestore.instance
-        .collection('cinemas')
-        .doc(widget.cinemaId)
-        .collection('screens')
-        .doc(widget.screenId)
-        .collection('showtimes')
-        .doc(showtimeId);
+    var showtimeRef =
+        FirebaseFirestore.instance.collection('showtimes').doc(showtimeId);
 
     // Xóa tất cả ghế ngồi trước
-    var seatsSnapshot = await showtimeRef.collection('seats').get();
+    var seatsSnapshot = await showtimeRef
+        .collection('seats')
+        .where('showtimeId', isEqualTo: showtimeId)
+        .get();
     for (var seat in seatsSnapshot.docs) {
       await seat.reference.delete();
     }
 
     // Xóa suất chiếu
     await showtimeRef.delete();
-    setState(() {
-      
-    });
+    setState(() {});
   }
 
   @override
@@ -111,7 +113,6 @@ class _AdminShowtimePageState extends State<AdminShowtimePage> {
           Padding(
             padding: EdgeInsets.all(10),
             child: Column(
-              
               children: [
                 TextField(
                     controller: timeController,
@@ -122,6 +123,7 @@ class _AdminShowtimePageState extends State<AdminShowtimePage> {
                 DropdownButtonFormField<String>(
                   value: selectedMovieId,
                   hint: Text("Chọn phim"),
+                  isExpanded: true,
                   onChanged: (String? value) {
                     setState(() {
                       selectedMovieId = value;
@@ -132,7 +134,11 @@ class _AdminShowtimePageState extends State<AdminShowtimePage> {
                       value: movie['id'],
                       child: Row(
                         children: [
-                          Text(movie['name']),
+                          Text(
+                            movie['name'],
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ],
                       ),
                     );
@@ -147,11 +153,9 @@ class _AdminShowtimePageState extends State<AdminShowtimePage> {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('cinemas')
-                  .doc(widget.cinemaId)
-                  .collection('screens')
-                  .doc(widget.screenId)
                   .collection('showtimes')
+                  .where('cinemaId', isEqualTo: widget.cinemaId)
+                  .where('screenId', isEqualTo: widget.screenId)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData)

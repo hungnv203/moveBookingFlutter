@@ -17,10 +17,9 @@ class _AdminScreenPageState extends State<AdminScreenPage> {
   // Thêm phòng chiếu mới vào rạp phim
   Future<void> addScreen() async {
     await FirebaseFirestore.instance
-        .collection('cinemas')
-        .doc(widget.cinemaId)
         .collection('screens')
         .add({
+      'cinemaId':widget.cinemaId,
       'name': nameController.text,
       'seats': int.tryParse(seatsController.text) ?? 50,
       'isAvailable': true, // Mặc định phòng khả dụng
@@ -36,11 +35,10 @@ class _AdminScreenPageState extends State<AdminScreenPage> {
   // Cập nhật thông tin phòng chiếu
   Future<void> updateScreen(String screenId, String name, int seats, bool isAvailable) async {
     await FirebaseFirestore.instance
-        .collection('cinemas')
-        .doc(widget.cinemaId)
         .collection('screens')
         .doc(screenId)
         .update({
+      'cinemaId':widget.cinemaId,
       'name': name,
       'seats': seats,
       'isAvailable': isAvailable,
@@ -50,8 +48,6 @@ class _AdminScreenPageState extends State<AdminScreenPage> {
   // Xóa phòng chiếu
   Future<void> deleteScreen(String screenId) async {
     await FirebaseFirestore.instance
-        .collection('cinemas')
-        .doc(widget.cinemaId)
         .collection('screens')
         .doc(screenId)
         .delete();
@@ -86,9 +82,7 @@ class _AdminScreenPageState extends State<AdminScreenPage> {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('cinemas')
-                  .doc(widget.cinemaId)
-                  .collection('screens')
+                  .collection('screens').where('cinemaId', isEqualTo: widget.cinemaId)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
